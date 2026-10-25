@@ -1,0 +1,234 @@
+{
+  "name": "Mohamed Ehab",
+  "job_title": "Oracle Technical Consultant",
+  "contact": {
+    "email": null,
+    "phone": null,
+    "location": null,
+    "links": []
+  },
+  "sections": [
+    {
+      "title": "Professional Summary",
+      "items": [
+        {
+          "text": "Oracle Technical Consultant specializing in AI-augmented enterprise applications, with expertise across Oracle APEX, Oracle SQL, and PL/SQL. Proven track record designing natural-language-to-SQL reporting assistants and multi-agent AI solutions on Oracle Fusion AI Agent Studio, alongside custom/standard report modification and OAF-based module enhancement. Combines strong PL/SQL and REST/JSON integration capabilities with applied AI expertise in RAG, LLM fine-tuning, and multi-agent orchestration, delivering end-to-end solutions across Oracle Cloud, Azure, and AWS."
+        }
+      ]
+    },
+    {
+      "title": "Education",
+      "items": [
+        {
+          "heading": "B.Sc. Computer Science, AI Specialization",
+          "subheading": "Zagazig University Egypt — Faculty of Computers and Information Sciences",
+          "date": null,
+          "location": null,
+          "bullets": [
+            "Graduation project selected among the top 5 projects in the faculty by the academic committee."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Certifications",
+      "items": [
+        {
+          "bullets": [
+            "Agentic AI Certified Foundations Associate | Oracle 10/2026",
+            "Oracle Fusion AI Agent Studio Certified Foundations Associate — Rel 1 | Oracle [Certificate] 05/2026",
+            "Oracle APEX: Foundations | Coursera [Certificate] 07/2026",
+            "Oracle Cloud Infrastructure AI Foundations | Coursera [Certificate] 08/2026",
+            "OCI AI Foundations Associate (2025) | Oracle [Certificate] 05/2026",
+            "AWS Certified AI Practitioner | Amazon Web Services (AWS) via Manara [Certificate] 2026",
+            "Mastering Deep Learning | ScSkilled — Dr. Mostafa Saad Ibrahim [Certificate] 08/2024 – 03/2026",
+            "Machine Learning Diploma | ScSkilled — Dr. Mostafa Saad Ibrahim [Certificate] 07/2023 – 07/2024",
+            "CS224N: Natural Language Processing with Deep Learning | Stanford University (Self-Study)08/2025 – 01/2026"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Technical & Soft Skills",
+      "items": [
+        {
+          "heading": "Oracle Ecosystem (Fusion & EBS):",
+          "bullets": [
+            "Oracle Fusion AI Agent Studio, Oracle Fusion REST APIs, Oracle APEX , Oracle SQL, PL/SQL, Standard PL/SQL APIs, BI Publisher, OTBI, Oracle Cloud Infrastructure (OCI),Oracle Report Builder , Oracle Workflow Builder"
+          ]
+        },
+        {
+          "heading": "Software Engineering & Languages:",
+          "bullets": [
+            "Python, Java, C++, JavaScript, FastAP, asyncpg, Pydantic, Streamlit, REST APIs, Data Structures, Algorithms, OOP, Design Patterns"
+          ]
+        },
+        {
+          "heading": "AI, LLMs & NLP:",
+          "bullets": [
+            "LLM Fine-Tuning, LoRA, SFT, Knowledge Distillation, Retrieval-Augmented Generation (RAG), Multi-Agent Orchestration, vLLM, LangChain, Prompt Engineering, Arabic NLP, English NLP, PyTorch, scikit-learn, Hugging Face Transformers, LLaMA-Factory"
+          ]
+        },
+        {
+          "heading": "Computer Vision:",
+          "bullets": [
+            "YOLOv11, YOLOv12, ResNet, Vision Transformer (ViT), Object Detection, Instance Segmentation, Edge Inference, OCR, OpenCV"
+          ]
+        },
+        {
+          "heading": "Databases & Vector Stores:",
+          "bullets": [
+            "Oracle SQL ,PostgreSQL, Qdrant, PgVector, Alembic"
+          ]
+        },
+        {
+          "heading": "Infrastructure & MLOps:",
+          "bullets": [
+            "Oracle Cloud Infrastructure (OCI) , Docker, GitHub Actions, CI/CD, Microsoft Azure, AWS, Prometheus, Grafana, Weights & Biases, Nginx, Locust"
+          ]
+        },
+        {
+          "heading": "Knowledge Transfer:",
+          "bullets": [
+            "Organizes an industry-readiness study group for aspiring AI engineers, producing structured educational content and guiding members toward junior AI roles"
+          ]
+        },
+        {
+          "heading": "Cross-Functional Delivery:",
+          "bullets": [
+            "Comfortable owning full project lifecycles — from requirements gathering through production rollout — across Oracle, AI, and cloud domains"
+          ]
+        },
+        {
+          "heading": "Self-Directed Problem Solving:",
+          "bullets": [
+            "Diagnoses and resolves complex integration issues independently (e.g., Oracle HCM REST API troubleshooting, multi-agent orchestration design) with minimal guidance"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Work Experience",
+      "items": [
+        {
+          "heading": "Oracle Technical Consultant",
+          "subheading": "DTCommittee",
+          "date": "05/2025 – Present",
+          "location": "Giza, Egypt",
+          "bullets": [
+            "Deliver AI-augmented Oracle APEX and Oracle Fusion solutions for enterprise business functions, owning schema design, PL/SQL development, REST API integration, and security hardening across the full delivery lifecycle .",
+            "Engineered a AI AGENT assistant For EBS using Oracle Apex with multi-layer security guardrails, achieving 94%+ accuracy, a 2s average response time, and zero unsafe query executions.",
+            "Integration with ETA (Egyptian Tax Authority) to automate supplier invoice creation. , and an Oracle analytics dashboard.",
+            "Architected a multi-agent business process assistant on Oracle Fusion AI Agent Studio, integrating Oracle Fusion REST APIs with a retrieval-grounded policy Q&A agent.",
+            "Build custom and Modify standard reports and enhanced custom modules built on OAF pages"
+          ]
+        },
+        {
+          "heading": "Junior AI Engineer — Part-Time",
+          "subheading": "OZ-Tech",
+          "date": "02/2025 – 07/2025",
+          "location": "Remote Egypt",
+          "bullets": [
+            "Trained and deployed YOLOv12 object detection and instance segmentation models achieving 90%+ Precision and 87% Recall across multiple production environments.",
+            "Owned the complete ML pipeline end-to-end: data collection, annotation, augmentation, model training, evaluation, and production deployment on real-world industrial datasets.",
+            "Integrated deployed models with Arduino-based edge devices, enabling real-time on-device inference at sub-100ms latency in resource-constrained environments.",
+            "Collaborated with cross-functional teams in an agile environment to deliver operational AI systems on schedule, supporting internal training programs in detection and segmentation tasks."
+          ]
+        },
+        {
+          "heading": "AI Engineer Intern — Egypt Office",
+          "subheading": "RMG",
+          "date": "02/2025 – 05/2025",
+          "location": "Saudi Arabia",
+          "bullets": [
+            "Developed and shipped computer vision models for object detection and segmentation, driving projects from research prototype to live production delivery.",
+            "Accelerated model iteration cycles by implementing structured evaluation pipelines, reducing review time and improving deployment readiness for production handoff.",
+            "Collaborated with cross-functional AI teams to integrate computer vision models into operational workflows across the full project lifecycle."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Projects",
+      "items": [
+        {
+          "heading": "AI Invoice Automation Agent — Oracle AI Agent Studio",
+          "subheading": "Infrarose 2026",
+          "bullets": [
+            "Designed and built an AI workflow agent that automates supplier invoice intake for Oracle Fusion Cloud Payables: a user uploads a PDF invoice in a chat window, and the invoice is created and validated in Fusion in about one minute, with no manual data entry.",
+            "Implemented PDF-to-JSON extraction with reconciliation checks between line amounts and the header total, and separate processing paths for PO and non-PO invoices.",
+            "Integrated Fusion REST APIs for supplier, supplier site, PO header and PO line lookups, and for invoice creation and the validateInvoice action; managed agent state with persistent variables.",
+            "Developed line matching by description and unit price instead of line order, and automated GL account classification for non-PO lines using a mapping table.",
+            "Added human-in-the-loop checkpoints only for ambiguous supplier sites and final approval, keeping accountants in control of judgment calls."
+          ]
+        },
+        {
+          "heading": "AI-Powered NL-to-SQL Assistant — Oracle APEX",
+          "subheading": "DTCommittee 2026",
+          "bullets": [
+            "Built an Oracle APEX tool letting non-technical HR users query the database in plain English; translated natural language into safe, read-only Oracle SQL via the Cohere Chat API (command-a-03-2025) and auto-executed it through DBMS SQL.",
+            "Constrained generation to a single explicitly defined HR schema, rejecting any request referencing unknown tables or columns, and rendered results as a live formatted HTML report inline in APEX.",
+            "Implemented defense-in-depth security: prompt-level restriction to SELECT/WITH statements, prompt-injection guarding, and a server-side guard validating every generated statement’s keyword and regex-scanning for DML/DDL/DCL before execution; all output escaped via APEX ESCAPE.HTML.",
+            "Reached 94%+ accuracy on schema-valid SQL generation, a 2s average response time, and zero unsafe query executions reaching the database."
+          ]
+        },
+        {
+          "heading": "Invoice Automation Portal — Oracle APEX",
+          "subheading": "DTCommittee 2026",
+          "bullets": [
+            "Architected a full REST-to-database import pipeline pulling live invoices from an external e-invoicing API (Egyptian ETA-style) via Oracle APEX Web Source Modules and REST Data Sources, with credential-store authentication and duplicate-import protection.",
+            "Parsed invoice header and line-item JSON with APEX JSON into normalized Oracle tables, and built editable Interactive Grids with full CRUD and lost-update protection for vendor/finance review.",
+            "Built an AJAX-driven, one-click invoice submission workflow (custom JavaScript dynamic actions triggering APEX INIT WF) and a hand-built, print-ready HTML/CSS invoice rendering engine.",
+            "Designed an executive analytics dashboard with Oracle JET charts (trends, top vendors, top invoices, distribution by vendor) and dual authentication (native APEX accounts + custom EBS SSO)."
+          ]
+        },
+        {
+          "heading": "Oracle E-Business Suite (EBS) Project",
+          "subheading": "Al-Babtain Power & Telecom 2026",
+          "bullets": [
+            "Delivered custom and standard reports modification for Al-Babtain Power & Telecom on Oracle E-Business Suite (EBS).",
+            "Updated and enhanced custom modules built on OAF (Oracle Application Framework) pages, ensuring alignment with client-specific business requirements."
+          ]
+        },
+        {
+          "heading": "Oracle E-Business Suite (EBS) Project",
+          "subheading": "Kasrawy Automotive Group 2026",
+          "bullets": [
+            "Delivered custom and standard reports modification for Kasrawy Automotive Group on Oracle E-Business Suite (EBS).",
+            "Updated and enhanced custom modules built on OAF (Oracle Application Framework) pages, ensuring alignment with client-specific business requirements."
+          ]
+        },
+        {
+          "heading": "Multi-Agent HR Absence Assistant — Oracle Fusion",
+          "subheading": "Infrarose 2026",
+          "bullets": [
+            "Designed a two-agent orchestrated architecture on Oracle Fusion AI Agent Studio: an absence-management agent handling creation/retrieval against Oracle Fusion HCM REST APIs, and a policy RAG agent answering leave-policy questions.",
+            "Built pre-validation logic checking an employee’s existing absence records before submission to prevent overlapping or duplicate entries (resolving conflict error ANC-3405005).",
+            "Delivered a coordinating orchestration layer routing each query to the correct agent, presenting a single unified conversational interface, and evolved the design to a supervisor/worker pattern for a manager demo."
+          ]
+        },
+        {
+          "heading": "Bilingual RAG System (Arabic/English)",
+          "subheading": "GitHub 01/2026 – Present",
+          "bullets": [
+            "Architected a production-grade RAG API supporting Arabic and English with 902ms average end-to-end latency via fully async FastAPI and asyncpg, with a provider-agnostic LLM interface supporting OpenAI GPT and Cohere Command-R+.",
+            "Designed a dual vector database layer (Qdrant + PgVector HNSW) using a factory pattern, enabling zero-code provider switching through environment configuration alone.",
+            "Built a parallelized OCR pipeline (ThreadPoolExecutor + Mistral OCR + Gemini Vision) to process scanned PDFs and mixed Arabic/English documents at scale.",
+            "Deployed to Microsoft Azure with CI/CD via GitHub Actions; instrumented 8 Docker Compose services behind Nginx with Prometheus and Grafana for full production observability.",
+            "Managed PostgreSQL schema lifecycle with Alembic migrations across three relational tables with JSONB metadata and indexed foreign keys, ensuring efficient chunk retrieval at scale."
+          ]
+        },
+        {
+          "heading": "ArabicLLM — Arabic NLP Fine-Tuning",
+          "subheading": "GitHub 02/2026 – Present",
+          "bullets": [
+            "Fine-tuned Qwen2.5-1.5B on Arabic NLP tasks (NER, summarization, keyword extraction) using LoRA rank 64 via LLaMA-Factory (SFT), matching GPT-4o-level structured output quality at zero per-request inference cost through full self-hosting.",
+            "Built a knowledge distillation pipeline using GPT-4o as teacher model to generate high-quality structured training data from raw Arabic news stories, validated with Pydantic v2 schemas.",
+            "Deployed a production vLLM 0.6.6 inference server with LoRA adapter hot-loading on an NVIDIA T4 GPU, sustaining 20 concurrent users at 14s average latency at 4096-token context, validated via Locust load testing.",
+            "Built a live Streamlit inference UI with real-time token streaming over an OpenAI-compatible API; tracked 3 training epochs at learning rate 2e-4 with Weights & Biases (W&B)."
+          ]
+        }
+      ]
+    }
+  ]
+}

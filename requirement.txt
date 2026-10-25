@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+pdfplumber
+cohere
+lxml
+pillow
+docx2pdf
+pytesseract
+pdf2image
