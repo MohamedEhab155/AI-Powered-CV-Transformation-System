@@ -122,7 +122,7 @@ def sidebar_section(sec):
             if parts:
                 out.append(sidebar_line(" - ".join(parts)))
         if text:
-            out.append(sidebar_line(text))
+            out.append(sidebar_line(text, bullet=len(text) <= 60))
         for b in bullets:
             out.append(sidebar_line(b))
     return out
@@ -267,7 +267,12 @@ def plan_columns(sections) -> list:
     return ["sidebar" if goes_to_sidebar(s, loose=loose) else "main" for s in sections]
 
 
-def render_cv(cv: dict, template_path: str, output_path: str) -> str:
+def render_cv(cv: dict, template_path: str, output_path: str, layout=None) -> str:
+    """
+    layout (optional): list of (section_index, "sidebar" | "main") in the order the
+    user wants. Indexes refer to the CV sections that have a title. If it is None,
+    the original order and the automatic sidebar rule are used.
+    """
     with zipfile.ZipFile(template_path) as z:
         names = z.namelist()
         files = {n: z.read(n) for n in names}
@@ -307,7 +312,10 @@ def render_cv(cv: dict, template_path: str, output_path: str) -> str:
 
     # 3) sections, same order as the original CV
     sections = [s for s in (cv.get("sections") or []) if _clean(s.get("title"))]
-    for sec, column in zip(sections, plan_columns(sections)):
+    if layout is None:
+        layout = list(enumerate(plan_columns(sections)))
+    for idx, column in layout:
+        sec = sections[idx]
         if column == "sidebar":
             print(f"  [sidebar] {sec['title']}")
             side.extend(sidebar_section(sec))

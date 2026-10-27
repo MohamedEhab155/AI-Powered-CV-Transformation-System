@@ -4,12 +4,12 @@ Local web UI for the CV transformation demo.
 
 Run:
     pip install fastapi uvicorn python-multipart python-dotenv pdfplumber cohere lxml
-
-Put your key in a file named .env next to this file:
-    api_key_cohere="your-key"
     python app.py
 Open:
     http://127.0.0.1:8000        (API docs: http://127.0.0.1:8000/docs)
+
+Put your key in a file named .env next to this file:
+    api_key_cohere="your-key"
 """
 import json
 import os
@@ -23,6 +23,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from pydantic import BaseModel
 
 from CV_Parser import parse_cv
 from PDF_Reader import read_pdf
@@ -50,6 +51,15 @@ LOCK = threading.Lock()
 ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
+class LayoutItem(BaseModel):
+    index: int
+    column: str
+
+
+class LayoutBody(BaseModel):
+    layout: list[LayoutItem]
+
+
 def _set(job_id, **kw):
     with LOCK:
         JOBS[job_id].update(kw)
@@ -60,6 +70,32 @@ def _error(message, status=400):
 
 
 # ---------------------------------------------------------------- pipeline --
+def build_outputs(job_id: str, layout=None):
+    """Render cv.json with the given layout. Returns (sections_for_ui, has_pdf)."""
+    folder = JOBS_DIR / job_id
+    cv = json.loads((folder / "cv.json").read_text(encoding="utf-8"))
+    sections = [s for s in (cv.get("sections") or []) if str(s.get("title") or "").strip()]
+    if layout is None:
+        layout = list(enumerate(plan_columns(sections)))
+
+    _set(job_id, step="build")
+    docx_path = folder / "cv_new.docx"
+    render_cv(cv, str(TEMPLATE), str(docx_path), layout=layout)
+
+    _set(job_id, step="pdf")
+    stale = folder / "cv_new.pdf"
+    if stale.exists():
+        stale.unlink()
+    pdf_out = to_pdf(str(docx_path))
+    has_pdf = bool(pdf_out and Path(pdf_out).exists())
+
+    ui = [
+        {"index": i, "title": sections[i]["title"], "items": len(sections[i].get("items") or []), "column": c}
+        for i, c in layout
+    ]
+    return ui, has_pdf
+
+
 def run_job(job_id: str, pdf_path: Path, stem: str, api_key: str):
     folder = pdf_path.parent
     started = time.time()
@@ -73,32 +109,36 @@ def run_job(job_id: str, pdf_path: Path, stem: str, api_key: str):
         cv = parse_cv(pdf["text"], api_key=api_key)
         (folder / "cv.json").write_text(json.dumps(cv, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        _set(job_id, step="build")
-        docx_path = folder / "cv_new.docx"
-        render_cv(cv, str(TEMPLATE), str(docx_path))
-
-        _set(job_id, step="pdf")
-        pdf_out = to_pdf(str(docx_path))
-
-        sections = [s for s in (cv.get("sections") or []) if s.get("title")]
-        columns = plan_columns(sections)
+        ui, has_pdf = build_outputs(job_id)
         result = {
             "name": cv.get("name"),
             "job_title": cv.get("job_title"),
             "stem": stem,
-            "has_pdf": bool(pdf_out and Path(pdf_out).exists()),
+            "has_pdf": has_pdf,
             "pages_in": pdf["num_pages"],
             "method": pdf["method"],
             "seconds": round(time.time() - started, 1),
-            "sections": [
-                {"title": s["title"], "items": len(s.get("items") or []), "column": c}
-                for s, c in zip(sections, columns)
-            ],
+            "version": 1,
+            "sections": ui,
         }
         _set(job_id, status="done", step="done", result=result)
     except Exception as e:  # show the real reason in the UI
         traceback.print_exc()
         _set(job_id, status="error", error=f"{type(e).__name__}: {e}")
+
+
+def rebuild_job(job_id: str, layout: list):
+    """Re-render with the layout chosen by the user."""
+    try:
+        ui, has_pdf = build_outputs(job_id, layout)
+        with LOCK:
+            job = JOBS[job_id]
+            result = job["result"]
+            result.update(sections=ui, has_pdf=has_pdf, version=result["version"] + 1)
+            job.update(status="done", step="done", rebuild_error=None)
+    except Exception as e:
+        traceback.print_exc()
+        _set(job_id, status="done", step="done", rebuild_error=f"{type(e).__name__}: {e}")
 
 
 # ------------------------------------------------------------------ routes --
@@ -146,6 +186,25 @@ async def convert(background: BackgroundTasks, file: UploadFile = File(...)):
     return {"job_id": job_id}
 
 
+@app.post("/api/job/{job_id}/render")
+def rerender(job_id: str, body: LayoutBody, background: BackgroundTasks):
+    """Rebuild the CV with the section order / sidebar choice made by the user."""
+    if not ID_RE.match(job_id) or job_id not in JOBS:
+        return _error("Job not found", 404)
+    with LOCK:
+        job = JOBS[job_id]
+        if job.get("status") != "done":
+            return _error("The CV is not ready yet.", 409)
+        n = len(job["result"]["sections"])
+        indexes = sorted(x.index for x in body.layout)
+        if indexes != list(range(n)) or any(x.column not in ("sidebar", "main") for x in body.layout):
+            return _error("Invalid layout.")
+        job.update(status="running", step="build")  # set now so the page waits for the new result
+    layout = [(x.index, x.column) for x in body.layout]
+    background.add_task(rebuild_job, job_id, layout)
+    return {"job_id": job_id}
+
+
 @app.get("/api/job/{job_id}")
 def job(job_id: str):
     if not ID_RE.match(job_id) or job_id not in JOBS:
@@ -155,7 +214,7 @@ def job(job_id: str):
 
 
 @app.get("/api/job/{job_id}/file/{kind}")
-def job_file(job_id: str, kind: str, download: int = 0):
+def job_file(job_id: str, kind: str, download: int = 0, v: int = 0):
     if not ID_RE.match(job_id) or job_id not in JOBS:
         return _error("Job not found", 404)
     files = {
@@ -177,6 +236,7 @@ def job_file(job_id: str, kind: str, download: int = 0):
         media_type=mime,
         filename=download_name,
         content_disposition_type="attachment" if download else "inline",
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -202,13 +262,11 @@ PAGE = r"""<!doctype html>
   #drop strong{color:var(--navy);display:block;font-size:18px;margin-bottom:6px}
   #fileinfo{margin-top:14px;font-size:15px;color:var(--navy2);font-weight:600}
   .row{display:flex;gap:14px;align-items:end;margin-top:18px;flex-wrap:wrap}
-  label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
-  input[type=password]{padding:10px 12px;border:1px solid var(--line);border-radius:8px;width:340px;font-size:14px}
   button,.btn{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
   button:hover,.btn:hover{background:var(--navy2)}
   button:disabled{background:#b4bbd3;cursor:not-allowed}
   .btn.green{background:var(--green)} .btn.green:hover{background:#4c8f2e}
-  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--navy)} .btn.ghost:hover{background:#eef1fa}
   .steps{display:flex;gap:0;flex-wrap:wrap}
   .step{flex:1;min-width:170px;padding:14px;border-radius:10px;background:#f4f6fb;margin:4px;display:flex;gap:10px;align-items:center;color:var(--muted);font-weight:600;font-size:14px}
   .dot{width:22px;height:22px;border-radius:50%;background:#d5daea;flex:none;display:grid;place-items:center;color:#fff;font-size:13px}
@@ -220,22 +278,34 @@ PAGE = r"""<!doctype html>
   .summary h2{margin:0;color:var(--navy);font-size:22px}
   .summary .sub{color:var(--green);font-weight:600;margin-top:2px}
   .meta{color:var(--muted);font-size:13px;margin-top:6px}
-  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .panes{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .pane h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
   iframe{width:100%;height:780px;border:1px solid var(--line);border-radius:10px;background:#fff}
-  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
-  th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
-  td{padding:9px 10px;border-bottom:1px solid #f0f2f8}
-  .badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
-  .badge.sidebar{background:#e3e8ff;color:var(--navy)} .badge.main{background:#e6f4de;color:#2f7a14}
   .nopdf{padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
-  @media(max-width:900px){.panes{grid-template-columns:1fr}}
+  /* layout editor */
+  .edhead{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .edhead h3{margin:0;color:var(--navy)}
+  .cols{display:grid;grid-template-columns:1fr 1.4fr;gap:18px;margin-top:16px}
+  .col h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+  .col.side h4{color:var(--navy)} .col.main h4{color:#2f7a14}
+  ul.dz{list-style:none;margin:0;padding:10px;min-height:90px;border-radius:12px;border:2px dashed var(--line);transition:.15s}
+  .col.side ul.dz{background:#f0f3ff;border-color:#c5cdf0} .col.main ul.dz{background:#f4faf0;border-color:#cde5bf}
+  ul.dz li{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:8px;cursor:grab;user-select:none}
+  ul.dz li.dragging{opacity:.4}
+  .grip{color:#9aa4c4;font-size:16px;letter-spacing:-3px}
+  .t{flex:1;font-weight:600;color:var(--navy2);font-size:14px}
+  .n{color:var(--muted);font-size:12px;white-space:nowrap}
+  .ctl{display:flex;gap:4px}
+  .mini{padding:3px 9px;font-size:13px;border-radius:6px;background:#eef1fa;color:var(--navy)} .mini:hover{background:#dde3f7}
+  .hint{color:#9aa4c4;font-size:13px;text-align:center;padding:6px}
+  #applyMsg{font-size:13px;color:var(--muted)} #applyMsg.bad{color:#a1281c}
+  @media(max-width:900px){.panes,.cols{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
-  <img src="/assets/logo.jpeg" alt="DTC">
+  <img src="/assets/dtc_logo.jpeg" alt="DTC">
   <div><h1>AI-Powered CV Transformation</h1><p>Upload any CV. Get it back in the company template, with the original sections and titles.</p></div>
 </header>
 <main>
@@ -243,9 +313,7 @@ PAGE = r"""<!doctype html>
     <div id="drop"><strong>Drop the original CV (PDF) here</strong>or click to choose a file
       <input type="file" id="file" accept="application/pdf,.pdf" hidden></div>
     <div id="fileinfo"></div>
-    <div class="row">
-      <button id="go" disabled>Transform CV</button>
-    </div>
+    <div class="row"><button id="go" disabled>Transform CV</button></div>
     <div id="err" class="err" hidden></div>
   </section>
 
@@ -270,6 +338,25 @@ PAGE = r"""<!doctype html>
         <button class="btn ghost" id="again">Convert another</button>
       </div>
     </section>
+
+    <section class="card">
+      <div class="edhead">
+        <div>
+          <h3>Customize the layout</h3>
+          <div class="meta">Choose which sections go in the <b>left sidebar</b> and set their order. Drag a section, or use the arrows. Titles are never changed.</div>
+        </div>
+        <div class="actions">
+          <span id="applyMsg"></span>
+          <button class="btn ghost" id="reset">Reset</button>
+          <button id="apply">Apply layout</button>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="col side"><h4>Left sidebar</h4><ul class="dz" id="ulSide"></ul></div>
+        <div class="col main"><h4>Main column</h4><ul class="dz" id="ulMain"></ul></div>
+      </div>
+    </section>
+
     <section class="card">
       <div class="panes">
         <div class="pane"><h3>Original</h3><iframe id="frOrig"></iframe></div>
@@ -277,22 +364,19 @@ PAGE = r"""<!doctype html>
           <div class="nopdf" id="noPdf" hidden>PDF preview is not available on this computer.<br>Download the Word file to see the result.<br><small>(Install Microsoft Word + <code>pip install docx2pdf</code> to enable the preview.)</small></div></div>
       </div>
     </section>
-    <section class="card">
-      <h3 style="margin:0 0 4px;color:var(--navy)">Sections detected in the original CV</h3>
-      <div class="meta">Titles are copied exactly from the original. Short lists (skills, personal info) go to the sidebar.</div>
-      <table><thead><tr><th>Title (from original)</th><th>Items</th><th>Placed in</th></tr></thead><tbody id="secRows"></tbody></table>
-    </section>
   </div>
 </main>
 
 <script>
 const $ = s => document.querySelector(s);
-let chosen = null, ready = true, timer = null;
+const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let chosen = null, ready = true, timer = null, currentId = null, defaultSections = [];
 const ORDER = ["read","parse","build","pdf"];
 
 fetch("/api/status").then(r=>r.json()).then(s=>{
   if(!s.has_key){ ready = false; showErr('Cohere API key not found. Add  api_key_cohere="..."  to the .env file and restart the server.'); }
   if(!s.has_template) showErr("Template file is missing: templates/DTC_CV_Template.docx");
+  refresh();
 });
 
 function showErr(m){ const e=$("#err"); e.textContent=m; e.hidden=!m; }
@@ -319,7 +403,7 @@ $("#go").onclick = async () => {
   const j = await r.json();
   if(!r.ok){ showErr(j.error || "Upload failed."); refresh(); return; }
   $("#progressCard").hidden = false; $("#result").hidden = true; mark("read");
-  poll(j.job_id);
+  poll(j.job_id, true);
 };
 
 function mark(step){
@@ -331,30 +415,92 @@ function mark(step){
   });
 }
 
-function poll(id){
+function poll(id, initial){
   clearInterval(timer);
   timer = setInterval(async () => {
     const j = await (await fetch("/api/job/"+id)).json();
-    if(j.status==="running") mark(j.step);
-    else if(j.status==="error"){ clearInterval(timer); $("#progressCard").hidden=true; showErr(j.error); refresh(); }
-    else { clearInterval(timer); mark("done"); show(id, j.result); }
+    if(j.status==="running"){ if(initial) mark(j.step); return; }
+    clearInterval(timer);
+    if(j.status==="error"){
+      if(initial){ $("#progressCard").hidden = true; showErr(j.error); refresh(); } else applyDone(j.error);
+    } else if(initial){ mark("done"); show(id, j.result); }
+    else applyDone(j.rebuild_error, j.result);
   }, 700);
 }
 
+function setPreview(id, r){
+  const pdf = r.has_pdf;
+  $("#dlPdf").hidden = !pdf; $("#frNew").hidden = !pdf; $("#noPdf").hidden = pdf;
+  if(pdf){ $("#dlPdf").href = `/api/job/${id}/file/pdf?download=1`; $("#frNew").src = `/api/job/${id}/file/pdf?v=${r.version}`; }
+  $("#dlDocx").href = `/api/job/${id}/file/docx?download=1`;
+}
+
 function show(id, r){
+  currentId = id;
   $("#rName").textContent = r.name || r.stem;
   $("#rTitle").textContent = r.job_title || "";
   $("#rMeta").textContent = `${r.pages_in} page(s) read via ${r.method} · ${r.sections.length} sections · ${r.seconds}s`;
-  $("#dlDocx").href = `/api/job/${id}/file/docx?download=1`;
   $("#frOrig").src = `/api/job/${id}/file/original`;
-  const pdf = r.has_pdf;
-  $("#dlPdf").hidden = !pdf; $("#frNew").hidden = !pdf; $("#noPdf").hidden = pdf;
-  if(pdf){ $("#dlPdf").href = `/api/job/${id}/file/pdf?download=1`; $("#frNew").src = `/api/job/${id}/file/pdf`; }
-  $("#secRows").innerHTML = r.sections.map(s =>
-    `<tr><td>${esc(s.title)}</td><td>${s.items}</td><td><span class="badge ${s.column}">${s.column==="sidebar"?"Left sidebar":"Main column"}</span></td></tr>`).join("");
+  setPreview(id, r);
+  defaultSections = JSON.parse(JSON.stringify(r.sections));
+  buildEditor(defaultSections);
+  $("#applyMsg").textContent = ""; $("#apply").disabled = false;
   $("#result").hidden = false; $("#result").scrollIntoView({behavior:"smooth"});
 }
-const esc = t => t.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- layout editor (the DOM is the state) ---------- */
+const ulSide = $("#ulSide"), ulMain = $("#ulMain");
+let dragEl = null;
+
+function liHtml(s){
+  return `<li draggable="true" data-i="${s.index}">
+    <span class="grip">⋮⋮</span><span class="t">${esc(s.title)}</span><span class="n">${s.items} item${s.items===1?"":"s"}</span>
+    <span class="ctl"><button class="mini" data-a="up" title="Move up">↑</button><button class="mini" data-a="down" title="Move down">↓</button><button class="mini" data-a="move" title="Move to the other column">⇄</button></span></li>`;
+}
+function buildEditor(sections){
+  ulSide.innerHTML = sections.filter(s=>s.column==="sidebar").map(liHtml).join("");
+  ulMain.innerHTML = sections.filter(s=>s.column==="main").map(liHtml).join("");
+}
+
+[ulSide, ulMain].forEach(ul => {
+  ul.addEventListener("dragstart", e => { dragEl = e.target.closest("li"); if(dragEl){ dragEl.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", ""); } });
+  ul.addEventListener("dragend", () => { if(dragEl) dragEl.classList.remove("dragging"); dragEl = null; });
+  ul.addEventListener("dragover", e => {
+    if(!dragEl) return; e.preventDefault();
+    const others = [...ul.querySelectorAll("li:not(.dragging)")];
+    const next = others.find(el => { const b = el.getBoundingClientRect(); return e.clientY < b.top + b.height/2; });
+    if(next) ul.insertBefore(dragEl, next); else ul.appendChild(dragEl);
+  });
+  ul.addEventListener("click", e => {
+    const b = e.target.closest("button[data-a]"); if(!b) return;
+    const li = b.closest("li"), a = b.dataset.a;
+    if(a==="up" && li.previousElementSibling) ul.insertBefore(li, li.previousElementSibling);
+    if(a==="down" && li.nextElementSibling) ul.insertBefore(li.nextElementSibling, li);
+    if(a==="move") (ul===ulSide ? ulMain : ulSide).appendChild(li);
+  });
+});
+
+function currentLayout(){
+  const pick = (ul, column) => [...ul.querySelectorAll("li")].map(li => ({index: +li.dataset.i, column}));
+  return [...pick(ulSide, "sidebar"), ...pick(ulMain, "main")];
+}
+
+$("#reset").onclick = () => { buildEditor(defaultSections); $("#applyMsg").textContent = "Reset. Click Apply layout to rebuild."; $("#applyMsg").className = ""; };
+
+$("#apply").onclick = async () => {
+  $("#apply").disabled = true; $("#applyMsg").className = ""; $("#applyMsg").textContent = "Rebuilding…";
+  const r = await fetch(`/api/job/${currentId}/render`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({layout: currentLayout()})});
+  const j = await r.json();
+  if(!r.ok){ applyDone(j.error || "Could not apply the layout."); return; }
+  poll(currentId, false);
+};
+
+function applyDone(err, r){
+  $("#apply").disabled = false;
+  if(err){ $("#applyMsg").className = "bad"; $("#applyMsg").textContent = err; return; }
+  $("#applyMsg").className = ""; $("#applyMsg").textContent = "Layout applied ✓";
+  if(r) setPreview(currentId, r);
+}
 
 $("#again").onclick = () => {
   $("#result").hidden = true; $("#progressCard").hidden = true; chosen = null; fileIn.value = "";
